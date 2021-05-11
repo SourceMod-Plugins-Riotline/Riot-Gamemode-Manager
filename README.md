@@ -14,7 +14,7 @@ Manage multiple gamemodes along with their respective maps with a _rock the vote
 ## Commands
 #### Admin Commands
 Visit https://wiki.alliedmods.net/Overriding_Command_Access_(Sourcemod) for changing command permissions.
-> `sm_forcergm` (`sm_frgm`) - Displays a menu with all available gamemodes and respective maps. [Default Perm: CONFIG]
+> `sm_forcergm [gamemode] [map]` (`sm_frgm`) - Displays a menu with all available gamemodes and respective maps; alternatively will force a gamemode and map change when parameters are specified. [Default Perm: CONFIG]
 
 > `sm_forcertg` (`sm_frtg`) - Forces a Rock the Game vote for all players on the server. [Default Perm: VOTE]
 
@@ -34,7 +34,9 @@ Visit https://wiki.alliedmods.net/Overriding_Command_Access_(Sourcemod) for chan
 
 > `rgm_rtg_needed <ratio>` - Percentage of players needed to rock the game. (60% = 0.60) [Default: '0.60']
 
-> `rgm_automapcycle <1/0>` - Automatically change the mapcycle.txt file to match the current gamemodes' maps [Default: 1].
+> `rgm_automapcycle <1/0>` - Automatically change the mapcycle.txt file to match the current gamemodes' maps. [Default: '1']
+
+> `rgm_defaultgamemode <gamemode>` - On server startup, automatically adjust the server to the specified gamemode. (Disabled when '') [Default: '']
 
 ## Source File Dependencies
 Requires [More Colors](https://forums.alliedmods.net/showthread.php?t=185016) by [Dr.McKay](https://www.doctormckay.com/) to compile.
