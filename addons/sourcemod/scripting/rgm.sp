@@ -3,10 +3,14 @@
 
 #pragma newdecls required
 
+#undef REQUIRE_PLUGIN
+#include <adminmenu>
+
 #define PLUGIN_VERSION "0.1.2-a.1"
 
 Handle h_GlobalConfig = INVALID_HANDLE;
 ConVar g_Debug, g_Toggle, g_StartupExec, g_NextMap, g_Cvar_InitialDelay, g_Cvar_Interval, g_Cvar_Needed, g_Cvar_AutoMapCycle;
+TopMenu h_AdminMenu = null;	// Handle for interfacing with the admin menu.
 char s_CurrentGamemode[128] = "";
 char s_NextOption[256];
 bool b_Debug;
@@ -70,6 +74,21 @@ public void OnPluginStart()
 
 	LoadRGMConfig();
 	LoadTranslations("rgm.phrases.txt");
+	/* See if the menu plugin is already ready */
+	TopMenu topmenu;
+	if (LibraryExists("adminmenu") && ((topmenu = GetAdminTopMenu()) != null))
+	{
+		/* If so, manually fire the callback */
+		OnAdminMenuReady(topmenu);
+	}
+}
+
+public void OnLibraryRemoved(const char[] name)
+{
+	if (StrEqual(name, "adminmenu", false))
+	{
+		h_AdminMenu = null;
+	}
 }
 
 public void OnMapStart()
@@ -159,6 +178,55 @@ public void OnClientDisconnect(int client)
 	}	
 }
 
+public void OnAdminMenuReady(Handle a_TopMenu)
+{
+	TopMenu topmenu = TopMenu.FromHandle(a_TopMenu);
+
+	/* Block us from being called twice */
+	if (topmenu == h_AdminMenu)
+	{
+		return;
+	}
+
+	h_AdminMenu = topmenu;
+
+	/* If the category is third party, it will have its own unique name. */
+	TopMenuObject server_commands = FindTopMenuCategory(h_AdminMenu, ADMINMENU_SERVERCOMMANDS);
+
+	if (server_commands == INVALID_TOPMENUOBJECT)
+	{
+		/* Error! */
+		return;
+	}
+
+	AddToTopMenu(h_AdminMenu, "sm_forcertg", TopMenuObject_Item, AdminMenu_ForceRTG, server_commands, "sm_forcertg", ADMFLAG_VOTE);
+	AddToTopMenu(h_AdminMenu, "sm_forcergm", TopMenuObject_Item, AdminMenu_ForceRGM, server_commands, "sm_forcergm", ADMFLAG_CONFIG);
+}
+
+public void AdminMenu_ForceRTG(TopMenu topmenu, TopMenuAction action, TopMenuObject object_id, int param, char[] buffer, int maxlength)
+{
+	if (action == TopMenuAction_DisplayOption) {
+		Format(buffer, maxlength, "Force Rock the Game");
+	} else if (action == TopMenuAction_SelectOption) {
+		if(!IsVoteInProgress()){
+			CPrintToChat(param, "%t %t", "tag", "Gamemode Vote Start");
+			DoGamemodeVote(false);
+		} else {
+			CPrintToChat(param, "%t %t", "tag", "Vote In Progress");
+		}
+	}
+}
+
+public void AdminMenu_ForceRGM(TopMenu topmenu, TopMenuAction action, TopMenuObject object_id, int param, char[] buffer, int maxlength)
+{
+	if (action == TopMenuAction_DisplayOption) {
+		Format(buffer, maxlength, "Choose Gamemode");
+	} else if (action == TopMenuAction_SelectOption) {
+		OpenGamemodeMenu(param);
+	}
+}
+
+
 //**************************//
 // Commands / Chat Triggers // 
 //**************************//
@@ -218,7 +286,7 @@ public Action ConfigDebug(int client, int args) {
 	return Plugin_Handled;
 }
 
-// Another Debugging Command. Why do I have two commands. Very useless like me
+// Another Debugging Command. Why do I have two commands. Very useless, like me
 public Action RGMDebug(int client, int args) {
 	PrintToChat(client, "s_NextOption: %s", s_NextOption);
 	PrintToChat(client, "s_CurrentGamemode: %s", s_CurrentGamemode);
@@ -261,6 +329,8 @@ public Action InitiateRGMVote(int client, int args) {
 //****************//
 // Menus / Voting //
 //****************//
+
+
 
 // Map Voting Part of the Gamemode Voting
 public int MapVote(Menu menu, MenuAction action, int param1, int param2)
