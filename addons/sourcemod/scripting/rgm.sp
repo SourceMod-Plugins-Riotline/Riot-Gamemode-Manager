@@ -6,7 +6,7 @@
 #undef REQUIRE_PLUGIN
 #include <adminmenu>
 
-#define PLUGIN_VERSION "0.1.2-a.2"
+#define PLUGIN_VERSION "0.1.2-a.3"
 
 Handle h_GlobalConfig = INVALID_HANDLE;
 ConVar g_Debug, g_Toggle, g_StartupExec, g_NextMap, g_Cvar_InitialDelay, g_Cvar_Interval, g_Cvar_Needed, g_Cvar_AutoMapCycle, g_Cvar_DefaultGame;
