@@ -1,0 +1,61 @@
+"Phrases"
+{
+	"tag"
+	{
+		"en"	"{slateblue}[RGM]"
+        }
+
+	"Gamemode Vote Start"
+	{
+		"en"	"{white}Gamemode vote started."
+	}
+
+	"Vote In Progress"
+	{
+		"en"	"{white}Vote in progress. Try again later."
+	}
+
+	"RTG No Change"
+	{
+		"en"	"{white}Staying on current map and gamemode."
+	}
+
+	"Game Change"
+	{
+		"#format"	"{1:s},{2:s}"
+		"en"	"{white}Changing gamemode to {lightcyan}{1} on {lightcyan}{2}."
+	}
+
+	"RTG Gamemode No Change"
+	{
+		"en"	"{white}Keeping the current gamemode. Vote for the map."
+	}
+
+	"RTG Gamemode Change"
+	{
+		"#format"	"{1:s}"
+		"en"	"{lightcyan}{1} {white}won the gamemode vote. Vote for the map."
+	}
+
+	"RTG Not Allowed"
+	{
+		"en"			"Rock the Game is not allowed yet."
+	}
+	
+	"Already Voted"
+	{
+ 		"#format"		"{1:d},{2:d}"
+	 	"en"			"You have already voted to Rock the Game. ({1} votes, {2} required)"
+	}
+	
+	"Minimal Players Not Met"
+	{
+		"en"			"The minimal number of players required has not been met."
+	}
+	
+	"RTG Requested"
+	{
+		"#format"		"{1:s},{2:d},{3:d}"
+		"en"			"{white}{1} wants to rock the game. ({2} votes, {3} required)"
+	}
+}
