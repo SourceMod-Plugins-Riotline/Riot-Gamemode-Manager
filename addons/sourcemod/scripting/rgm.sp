@@ -9,12 +9,13 @@
 #define PLUGIN_VERSION "0.1.2-a.2"
 
 Handle h_GlobalConfig = INVALID_HANDLE;
-ConVar g_Debug, g_Toggle, g_StartupExec, g_NextMap, g_Cvar_InitialDelay, g_Cvar_Interval, g_Cvar_Needed, g_Cvar_AutoMapCycle;
+ConVar g_Debug, g_Toggle, g_StartupExec, g_NextMap, g_Cvar_InitialDelay, g_Cvar_Interval, g_Cvar_Needed, g_Cvar_AutoMapCycle, g_Cvar_DefaultGame;
 TopMenu h_AdminMenu = null;	// Handle for interfacing with the admin menu.
 char s_CurrentGamemode[128] = "";
 char s_NextOption[256];
 bool b_Debug;
 bool b_Enabled = true;
+bool b_InitialSetup = false;
 bool b_RTGAllowed = false;
 int i_Voters = 0;				// Total voters connected. Doesn't include fake clients.
 int i_Votes = 0;				// Total number of "say rtg" votes
@@ -31,7 +32,7 @@ public Plugin myinfo =
 	author = "Riotline",
 	description = "Manage plugin gamemodes and map rotations.",
 	version = PLUGIN_VERSION,
-	url = ""
+	url = "https://github.com/Riotline/"
 };
 
 //
@@ -47,8 +48,9 @@ public void OnPluginStart()
 	g_Cvar_Interval = CreateConVar("rgm_rtg_interval", "240.0", "Time (in seconds) after a failed RTG before another can be held", 0, true, 0.00);
 	g_Cvar_Needed = CreateConVar("rgm_rtg_needed", "0.60", "Percentage of players needed to rock the game (Def 60%)", 0, true, 0.05, true, 1.0);
 	g_Cvar_AutoMapCycle = CreateConVar("rgm_automapcycle", "1", "Automatically Update the MapCycle.txt file to match gamemode.", 0, true, 0.0, true, 1.0);
+	g_Cvar_DefaultGame = CreateConVar("rgm_defaultgamemode", "", "On startup, server will automatically adjust itself for the default gamemode.", 0);
 
-	AutoExecConfig(true, "rgm");
+	AutoExecConfig(true, "plugin.rgm");
 	
 	HookConVarChange(g_Debug, ToggleDebugging);
 	HookConVarChange(g_Toggle, ToggleRGMCvar);
@@ -83,15 +85,7 @@ public void OnPluginStart()
 	}
 }
 
-public void OnLibraryRemoved(const char[] name)
-{
-	if (StrEqual(name, "adminmenu", false))
-	{
-		h_AdminMenu = null;
-	}
-}
-
-public void OnMapStart()
+public void OnConfigsExecuted()
 {
 	char s_CurrentExec[PLATFORM_MAX_PATH];
 	GetConVarString(g_StartupExec, s_CurrentExec, sizeof(s_CurrentExec));
@@ -104,12 +98,72 @@ public void OnMapStart()
 	CreateTimer(g_Cvar_InitialDelay.FloatValue, Timer_DelayRTG, _, TIMER_FLAG_NO_MAPCHANGE);
 
 	if(StrEqual(s_CurrentGamemode, "")){
-		char s_CurrentMap[128];
-		Handle h_MapCycleFile = OpenFile("cfg/mapcycle.txt", "w");
+		char s_Arg[256];
+		GetConVarString(g_Cvar_DefaultGame, s_Arg, sizeof(s_Arg));
+		if(!StrEqual(s_Arg, "") && !b_InitialSetup && GetClientCount(true) <= 0 && GetEngineTime() < 32.0){
+			b_InitialSetup = true;
+			char s_MatchedGamemode[256];
+			int i_MatchCount;
+			for(int i=0; i < GetArraySize(h_Gamemodes); i++){
+				char s_GamemodeSection[256];
+				GetArrayString(h_Gamemodes, i, s_GamemodeSection, sizeof(s_GamemodeSection))
+				if(StrContains(s_GamemodeSection, s_Arg, false) >= 0){
+					i_MatchCount++;
+					s_MatchedGamemode = s_GamemodeSection;
+				}
+			}
+			if(i_MatchCount == 1){
+				for(int i=0; i<GetArraySize(h_Maps); i++){
+					char s_MapSection[128];
+					GetArrayString(h_Maps, i, s_MapSection, sizeof(s_MapSection));
+					if(StrContains(s_MapSection, s_MatchedGamemode) == -1){
+						continue;
+					} else {
+						char s_Option[2][128];
+						ExplodeString(s_MapSection, "|", s_Option, sizeof(s_Option), sizeof(s_Option[]));
+						LoadGamemodeConfig(s_Option[0]);
+						s_CurrentGamemode = s_Option[0];
+						DataPack d_VotedData;
+						CreateDataTimer(2.0, Timer_MapChange, d_VotedData, TIMER_FLAG_NO_MAPCHANGE);
+						WritePackString(d_VotedData, s_MatchedGamemode);
+						WritePackString(d_VotedData, s_Option[1]);
+						break;
+					}
+				}
+			} else if (i_MatchCount > 1){
+				LogError("[RGM] Multiple gamemodes found. Try to be more specific for rgm_defaultgamemode.");
+				char s_CurrentMap[128];
+				Handle h_MapCycleFile = OpenFile("cfg/mapcycle.txt", "w");
 
-		GetCurrentMap(s_CurrentMap, sizeof(s_CurrentMap));
-		WriteFileLine(h_MapCycleFile, s_CurrentMap); // Prevent any Map Cycle related issues.
-		CloseHandle(h_MapCycleFile);
+				GetCurrentMap(s_CurrentMap, sizeof(s_CurrentMap));
+				WriteFileLine(h_MapCycleFile, s_CurrentMap); // Prevent any Map Cycle related issues.
+				CloseHandle(h_MapCycleFile);
+			} else {
+				LogError("[RGM] Invalid gamemode in rgm_defaultgamemode. Did you spell it correctly?");
+				char s_CurrentMap[128];
+				Handle h_MapCycleFile = OpenFile("cfg/mapcycle.txt", "w");
+
+				GetCurrentMap(s_CurrentMap, sizeof(s_CurrentMap));
+				WriteFileLine(h_MapCycleFile, s_CurrentMap); // Prevent any Map Cycle related issues.
+				CloseHandle(h_MapCycleFile);
+			}
+		} else {
+			char s_CurrentMap[128];
+			Handle h_MapCycleFile = OpenFile("cfg/mapcycle.txt", "w");
+
+			GetCurrentMap(s_CurrentMap, sizeof(s_CurrentMap));
+			WriteFileLine(h_MapCycleFile, s_CurrentMap); // Prevent any Map Cycle related issues.
+			CloseHandle(h_MapCycleFile);
+		}
+	}
+}
+
+
+public void OnLibraryRemoved(const char[] name)
+{
+	if (StrEqual(name, "adminmenu", false))
+	{
+		h_AdminMenu = null;
 	}
 }
 
@@ -347,7 +401,6 @@ void OpenGamemodeMenu(int client) {
 		char s_GamemodeSection[256];
 		GetArrayString(h_Gamemodes, i, s_GamemodeSection, sizeof(s_GamemodeSection));
 		AddMenuItem(h_Menu, s_GamemodeSection, s_GamemodeSection);
-		PrintToChatAll(s_GamemodeSection);
 	}
 	SetMenuExitButton(h_Menu, true);
 	DisplayMenu(h_Menu, client, 0);
@@ -363,9 +416,15 @@ public Action ConfigDebug(int client, int args) {
 
 // Another Debugging Command. Why do I have two commands. Very useless, like me
 public Action RGMDebug(int client, int args) {
-	PrintToChat(client, "s_NextOption: %s", s_NextOption);
-	PrintToChat(client, "s_CurrentGamemode: %s", s_CurrentGamemode);
-	PrintToChat(client, "b_Enabled: %s", b_Enabled ? "true":"false");
+	if(client != 0){
+		PrintToChat(client, "s_NextOption: %s", s_NextOption);
+		PrintToChat(client, "s_CurrentGamemode: %s", s_CurrentGamemode);
+		PrintToChat(client, "b_Enabled: %s", b_Enabled ? "true":"false");
+	} else {
+		PrintToServer("s_NextOption: %s", s_NextOption);
+		PrintToServer("s_CurrentGamemode: %s", s_CurrentGamemode);
+		PrintToServer("b_Enabled: %s", b_Enabled ? "true":"false");
+	}
 	
 	return Plugin_Handled;
 }
