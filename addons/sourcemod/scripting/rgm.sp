@@ -59,8 +59,8 @@ public void OnPluginStart()
 
 	RegConsoleCmd("sm_rtg", RTGCommand);
 
-	RegAdminCmd("sm_forcergm", OpenGamemodeMenu, ADMFLAG_CONFIG, "Force Gamemode + Map Change.");
-	RegAdminCmd("sm_frgm", OpenGamemodeMenu, ADMFLAG_CONFIG, "Force Gamemode + Map Change.");
+	RegAdminCmd("sm_forcergm", ForceGamemode, ADMFLAG_CONFIG, "Force Gamemode + Map Change.");
+	RegAdminCmd("sm_frgm", ForceGamemode, ADMFLAG_CONFIG, "Force Gamemode + Map Change.");
 	RegAdminCmd("sm_forcertg", InitiateRGMVote, ADMFLAG_VOTE, "Force a Rock The Game Vote");
 	RegAdminCmd("sm_frtg", InitiateRGMVote, ADMFLAG_VOTE, "Force a Rock The Game Vote");
 
@@ -260,22 +260,97 @@ public Action RTGCommand(int client, int args) {
 	return Plugin_Handled;
 }
 
+public Action ForceGamemode(int client, int args) { // To-do: rework
+	if(GetCmdArgs() < 1) {
+		OpenGamemodeMenu(client);
+		return Plugin_Handled;
+	} else if(GetCmdArgs() == 1) {
+		char s_Arg1[256];
+		char s_MatchedGamemode[256];
+		int i_MatchCount;
+		GetCmdArg(1, s_Arg1, sizeof(s_Arg1));
+		for(int i=0; i < GetArraySize(h_Gamemodes); i++){
+			char s_GamemodeSection[256];
+			GetArrayString(h_Gamemodes, i, s_GamemodeSection, sizeof(s_GamemodeSection))
+			if(StrContains(s_GamemodeSection, s_Arg1, false) >= 0){
+				i_MatchCount++;
+				s_MatchedGamemode = s_GamemodeSection;
+			}
+		}
+		if(i_MatchCount == 1){
+			ShowMapMenu(client, s_MatchedGamemode);
+		} else if (i_MatchCount > 1){
+			CPrintToChat(client, "%t {white}Multiple gamemodes found. Try to be more specific.", "tag");
+		} else {
+			CPrintToChat(client, "%t {white}Invalid gamemode. Did you spell it correctly?", "tag");
+		}
+	} else if(GetCmdArgs() == 2){
+		char s_Arg1[256], s_Arg2[256];
+		char s_MatchedMap[256], s_MatchedGamemode[256];
+		int i_MatchCount;
+		GetCmdArg(1, s_Arg1, sizeof(s_Arg1));
+		GetCmdArg(2, s_Arg2, sizeof(s_Arg2));
+		for(int i=0; i < GetArraySize(h_Gamemodes); i++){
+			char s_GamemodeSection[256];
+			GetArrayString(h_Gamemodes, i, s_GamemodeSection, sizeof(s_GamemodeSection))
+			if(StrContains(s_GamemodeSection, s_Arg1, false) >= 0){
+				i_MatchCount++;
+				s_MatchedGamemode = s_GamemodeSection;
+			}
+		}
+		if (i_MatchCount > 1){
+			CPrintToChat(client, "%t {white}Multiple gamemodes found. Try to be more specific.", "tag");
+			return Plugin_Handled;
+		} else if (i_MatchCount < 1){
+			CPrintToChat(client, "%t {white}Invalid gamemode. Did you spell it correctly?", "tag");
+			return Plugin_Handled;
+		}
+		i_MatchCount = 0;
+
+		for(int i=0; i < GetArraySize(h_Maps); i++){
+			char s_MapSection[256];
+			GetArrayString(h_Maps, i, s_MapSection, sizeof(s_MapSection))
+			if(StrContains(s_MapSection, s_Arg2, false) >= 0){
+				i_MatchCount++;
+				s_MatchedMap = s_MapSection;
+			}
+		}
+		if (i_MatchCount > 1){
+			CPrintToChat(client, "%t {white}Multiple maps found. Try to be more specific.", "tag");
+			return Plugin_Handled;
+		} else if (i_MatchCount < 1){
+			CPrintToChat(client, "%t {white}Invalid map. Did you spell it correctly?", "tag");
+			return Plugin_Handled;
+		} else {
+			char s_ExplodedSelection[2][128];
+			ExplodeString(s_MatchedMap, "|", s_ExplodedSelection, sizeof(s_ExplodedSelection), sizeof(s_ExplodedSelection[]));
+			CPrintToChatAll("%t %t", "tag", "Game Change", s_MatchedGamemode, s_ExplodedSelection[1]);
+			s_NextOption = s_MatchedGamemode;
+			DataPack d_VotedData;
+			CreateDataTimer(3.0, Timer_MapChange, d_VotedData, TIMER_FLAG_NO_MAPCHANGE);
+			WritePackString(d_VotedData, s_MatchedGamemode);
+			WritePackString(d_VotedData, s_ExplodedSelection[1]);
+		}
+	} else {
+		ReplyToCommand(client, "%t Usage: sm_forcergm [gamemode] [map]", "tag");
+	}
+	return Plugin_Handled;
+} // To-do: Create a gamemode finder / validity function rather than repeating code.
+
 // Admin Gamemode Menu. Force Gamemode/Map Change
-public Action OpenGamemodeMenu(int client, int args) {
+void OpenGamemodeMenu(int client) {
 	Handle h_Menu = CreateMenu(GamemodeMenu);
 	SetMenuTitle(h_Menu, "[RGM] Select Gamemode");
 	
 	for(int i=0; i < GetArraySize(h_Gamemodes); i++)
 	{
-		char s_GamemodeSection[255];
+		char s_GamemodeSection[256];
 		GetArrayString(h_Gamemodes, i, s_GamemodeSection, sizeof(s_GamemodeSection));
 		AddMenuItem(h_Menu, s_GamemodeSection, s_GamemodeSection);
 		PrintToChatAll(s_GamemodeSection);
 	}
 	SetMenuExitButton(h_Menu, true);
 	DisplayMenu(h_Menu, client, 0);
-	
-	return Plugin_Handled;
 }
 
 // A Debugging Function/Command
@@ -349,7 +424,6 @@ public int MapVote(Menu menu, MenuAction action, int param1, int param2)
 			if(StrEqual(s_VotedGame, "No Change")){
 				CPrintToChatAll("%t %t", "tag", "RTG No Change");
 			} else {
-				s_NextOption = s_VotedGame;
 				if(!SetNextMap(s_ExplodedSelection[1])) {
 					LogError("Map %s is an invalid map. Perhaps it was deleted from the maps folder.", s_ExplodedSelection[1]);
 				} else {
@@ -503,49 +577,55 @@ void DoGamemodeVote(bool b_NoChange = false)
 	menu.DisplayVoteToAll(20);
 }
 
+void ShowMapMenu(int client, const char[] s_SelectedGamemode)
+{
+	char s_Gamemode[256];
+	Handle h_Menu = CreateMenu(MapMenu);
+	Handle h_GMConfig = CloneHandle(h_GlobalConfig);
+
+	SetMenuTitle(h_Menu, "[RGM] Select Map (%s)", s_SelectedGamemode);
+	KvRewind(h_GMConfig);
+	KvGotoFirstSubKey(h_GMConfig);
+	
+	do {
+		KvGetSectionName(h_GMConfig, s_Gamemode, sizeof(s_Gamemode));
+		if(StrEqual(s_Gamemode, s_SelectedGamemode)) {
+			if (b_Debug) {
+				CPrintToChatAll("%t {white}Loading gamemode maps: %s", "tag", s_SelectedGamemode);
+			}
+			if(KvJumpToKey(h_GMConfig, "maps")){
+				if(KvGotoFirstSubKey(h_GMConfig, false)){
+					do {
+						if(KvGetDataType(h_GMConfig, NULL_STRING) == KvData_String) {
+							char s_GamemodeMap[256];
+							char s_MapMenuItem[256];
+							
+							KvGetString(h_GMConfig, NULL_STRING, s_GamemodeMap, sizeof(s_GamemodeMap));
+							Format(s_MapMenuItem, sizeof(s_MapMenuItem), "%s|%s", s_SelectedGamemode, s_GamemodeMap);
+							AddMenuItem(h_Menu, s_MapMenuItem, s_GamemodeMap);
+						}
+					} while (KvGotoNextKey(h_GMConfig, false));
+				} else {
+					ReplyToCommand(client, "%t No maps found for selected gamemode.", "tag");
+				}
+				KvGoBack(h_GMConfig);
+			} else {
+				PrintToServer("No Maps Key in Gamemode Config");
+			}
+			KvGoBack(h_GMConfig);
+		}
+	} while (KvGotoNextKey(h_GMConfig));
+	SetMenuExitButton(h_Menu, true);
+	DisplayMenu(h_Menu, client, 20);
+}
+
 // Admin Gamemode Changing Menu
 public int GamemodeMenu(Menu menu, MenuAction action, int param1, int param2) {
 	if(action == MenuAction_Select) {
 		// Show Map Menu
-		char s_SelectedGamemode[255], s_Gamemode[255];
-		Handle h_Menu = CreateMenu(MapMenu);
-		Handle h_GMConfig = CloneHandle(h_GlobalConfig);
-
+		char s_SelectedGamemode[256];
 		GetMenuItem(menu, param2, s_SelectedGamemode, sizeof(s_SelectedGamemode));
-		SetMenuTitle(h_Menu, "[RGM] Select Map (%s)", s_SelectedGamemode);
-		KvRewind(h_GMConfig);
-		KvGotoFirstSubKey(h_GMConfig);
-		
-		do {
-			KvGetSectionName(h_GMConfig, s_Gamemode, sizeof(s_Gamemode));
-			if(StrEqual(s_Gamemode, s_SelectedGamemode)) {
-				if (b_Debug) {
-					CPrintToChatAll("%t {white}Loading gamemode maps: %s", "tag", s_SelectedGamemode);
-				}
-				if(KvJumpToKey(h_GMConfig, "maps")){
-					if(KvGotoFirstSubKey(h_GMConfig, false)){
-						do {
-							if(KvGetDataType(h_GMConfig, NULL_STRING) == KvData_String) {
-								char s_GamemodeMap[256];
-								char s_MapMenuItem[256];
-								
-								KvGetString(h_GMConfig, NULL_STRING, s_GamemodeMap, sizeof(s_GamemodeMap));
-								Format(s_MapMenuItem, sizeof(s_MapMenuItem), "%s|%s", s_SelectedGamemode, s_GamemodeMap);
-								AddMenuItem(h_Menu, s_MapMenuItem, s_GamemodeMap);
-							}
-						} while (KvGotoNextKey(h_GMConfig, false));
-					} else {
-						ReplyToCommand(param1, "%t No maps found for selected gamemode.", "tag");
-					}
-					KvGoBack(h_GMConfig);
-				} else {
-					PrintToServer("No Maps Key in Gamemode Config");
-				}
-				KvGoBack(h_GMConfig);
-			}
-		} while (KvGotoNextKey(h_GMConfig));
-		SetMenuExitButton(h_Menu, true);
-		DisplayMenu(h_Menu, param1, 20);
+		ShowMapMenu(param1, s_SelectedGamemode);
 	} else if (action == MenuAction_End) {
 		CloseHandle(menu);
 	}
@@ -660,7 +740,7 @@ void LoadRGMConfig() {
 
 	// Loop through Key Values (Gamemodes)
 	do {
-		char s_GamemodeSection[255];
+		char s_GamemodeSection[256];
 		KvGetSectionName(h_GMConfig, s_GamemodeSection, sizeof(s_GamemodeSection));
 		PushArrayString(h_Gamemodes, s_GamemodeSection);
 
