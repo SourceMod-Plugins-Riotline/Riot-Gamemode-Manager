@@ -1,20 +1,17 @@
 #include <sourcemod>
 #include <morecolors>
 
+#pragma newdecls required
+
 #undef REQUIRE_PLUGIN
 #include <adminmenu>
-#undef REQUIRE_EXTENSIONS
-#include <SteamWorks>
 
-#define PLUGIN_VERSION "0.1.2-a.4"
-
-#pragma newdecls required
+#define PLUGIN_VERSION "0.1.2-a.3"
 
 Handle h_GlobalConfig = INVALID_HANDLE;
 ConVar g_Debug, g_Toggle, g_StartupExec, g_NextMap, g_Cvar_InitialDelay, g_Cvar_Interval, g_Cvar_Needed, g_Cvar_AutoMapCycle, g_Cvar_DefaultGame;
 TopMenu h_AdminMenu = null;	// Handle for interfacing with the admin menu.
 char s_CurrentGamemode[128] = "";
-char s_CurrentGamemodeDesc[256] = "";
 char s_NextOption[256];
 bool b_Debug;
 bool b_Enabled = true;
@@ -88,20 +85,13 @@ public void OnPluginStart()
 	}
 }
 
-public void OnMapStart()
-{
-	SteamWorks_SetGameDescription(s_CurrentGamemodeDesc);
-}
-
 public void OnConfigsExecuted()
 {
-	char s_CurrentExec[128];
+	char s_CurrentExec[PLATFORM_MAX_PATH];
 	GetConVarString(g_StartupExec, s_CurrentExec, sizeof(s_CurrentExec));
-	PrintToServer("%s", s_CurrentExec);
 
 	if(b_Enabled) {
 		ServerCommand("exec \"%s\"", s_CurrentExec);
-		PrintToServer("<<<>>> Attempting to Execute Gamemode Config <<<>>>");
 		SetConVarString(g_StartupExec, NULL_STRING, false, false);
 		s_NextOption = NULL_STRING;
 	}
@@ -648,19 +638,42 @@ void DoGamemodeVote(bool b_NoChange = false)
 
 void ShowMapMenu(int client, const char[] s_SelectedGamemode)
 {
+	char s_Gamemode[256];
 	Handle h_Menu = CreateMenu(MapMenu);
+	Handle h_GMConfig = CloneHandle(h_GlobalConfig);
 
 	SetMenuTitle(h_Menu, "[RGM] Select Map (%s)", s_SelectedGamemode);
-
-	for(int i=0; i<GetArraySize(h_Maps); i++){
-		char s_SelectedMap[128], s_ExplodedSelection[2][128];
-		GetArrayString(h_Maps, i, s_SelectedMap, sizeof(s_SelectedMap));
-		if(StrContains(s_SelectedMap, s_SelectedGamemode, false) != -1){
-			ExplodeString(s_SelectedMap, "|", s_ExplodedSelection, sizeof(s_ExplodedSelection), sizeof(s_ExplodedSelection[]))
-			AddMenuItem(h_Menu, s_SelectedMap, s_ExplodedSelection[1]);
-		}
-	}
+	KvRewind(h_GMConfig);
+	KvGotoFirstSubKey(h_GMConfig);
 	
+	do {
+		KvGetSectionName(h_GMConfig, s_Gamemode, sizeof(s_Gamemode));
+		if(StrEqual(s_Gamemode, s_SelectedGamemode)) {
+			if (b_Debug) {
+				CPrintToChatAll("%t {white}Loading gamemode maps: %s", "tag", s_SelectedGamemode);
+			}
+			if(KvJumpToKey(h_GMConfig, "maps")){
+				if(KvGotoFirstSubKey(h_GMConfig, false)){
+					do {
+						if(KvGetDataType(h_GMConfig, NULL_STRING) == KvData_String) {
+							char s_GamemodeMap[256];
+							char s_MapMenuItem[256];
+							
+							KvGetString(h_GMConfig, NULL_STRING, s_GamemodeMap, sizeof(s_GamemodeMap));
+							Format(s_MapMenuItem, sizeof(s_MapMenuItem), "%s|%s", s_SelectedGamemode, s_GamemodeMap);
+							AddMenuItem(h_Menu, s_MapMenuItem, s_GamemodeMap);
+						}
+					} while (KvGotoNextKey(h_GMConfig, false));
+				} else {
+					ReplyToCommand(client, "%t No maps found for selected gamemode.", "tag");
+				}
+				KvGoBack(h_GMConfig);
+			} else {
+				PrintToServer("No Maps Key in Gamemode Config");
+			}
+			KvGoBack(h_GMConfig);
+		}
+	} while (KvGotoNextKey(h_GMConfig));
 	SetMenuExitButton(h_Menu, true);
 	DisplayMenu(h_Menu, client, 20);
 }
@@ -798,28 +811,9 @@ void LoadRGMConfig() {
 				char s_MapName[256];
 				// Retrieve Map Name and Format as "Gamemode|Map" for later use.
 				KvGetString(h_GMConfig, NULL_STRING, s_MapName, sizeof(s_MapName));
-				if(StrContains(s_MapName, "*", false) != -1){
-					Handle h_MapDirectory = OpenDirectory("maps/");
-					if(h_MapDirectory == INVALID_HANDLE){
-						LogError("[RGM] Invalid Maps Folder or Handle");
-					} else {
-						char s_MapFileName[256];
-						FileType h_MapFileType;
-						ReplaceString(s_MapName, sizeof(s_MapName), "*", "", false);
-						while(ReadDirEntry(h_MapDirectory, s_MapFileName, sizeof(s_MapFileName), h_MapFileType)){
-							if (h_MapFileType != FileType_File || StrContains(s_MapFileName, ".bsp", false) == -1 || StrContains(s_MapFileName, s_MapName, false) == -1) continue;
-							int i_MapFileCharCount = strlen(s_MapFileName)-4;
-							s_MapFileName[i_MapFileCharCount] = '\0';
-							char s_NewMapName[128];
-							Format(s_NewMapName, sizeof(s_NewMapName), "%s|%s", s_GamemodeSection, s_MapFileName);
-							PushArrayString(h_Maps, s_NewMapName);
-						}
-					}
-				} else {
-					Format(s_MapName, sizeof(s_MapName), "%s|%s", s_GamemodeSection, s_MapName);
-					// Push to the Global Maps Dynamic Array
-					PushArrayString(h_Maps, s_MapName);
-				}
+				Format(s_MapName, sizeof(s_MapName), "%s|%s", s_GamemodeSection, s_MapName);
+				// Push to the Global Maps Dynamic Array
+				PushArrayString(h_Maps, s_MapName);
 			} while (KvGotoNextKey(h_GMConfig, false));
 			KvGoBack(h_GMConfig);
 		}
@@ -988,9 +982,6 @@ void LoadGamemodeConfig(const char[] s_Gamemode) {
 						} else {
 							SetConVarString(g_StartupExec, s_ActionParameter, false, false);
 						}
-						PrintToServer("%s", s_ActionParameter);
-					} else if(StrEqual(s_ActionType, "gamedesc", false)){
-						s_CurrentGamemodeDesc = s_ActionParameter;
 					}
 				}
 			} while (KvGotoNextKey(h_GMConfig, false));
