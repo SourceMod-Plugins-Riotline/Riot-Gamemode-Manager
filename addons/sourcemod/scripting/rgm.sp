@@ -6,7 +6,7 @@
 #undef REQUIRE_EXTENSIONS
 #include <SteamWorks>
 
-#define PLUGIN_VERSION "0.1.2-a.4"
+#define PLUGIN_VERSION "0.1.2-a.5"
 
 #pragma newdecls required
 
@@ -15,6 +15,7 @@ ConVar g_Debug, g_Toggle, g_StartupExec, g_NextMap, g_Cvar_InitialDelay, g_Cvar_
 TopMenu h_AdminMenu = null;	// Handle for interfacing with the admin menu.
 char s_CurrentGamemode[128] = "";
 char s_CurrentGamemodeDesc[256] = "";
+char s_CurrentServerName[256] = "";
 char s_NextOption[256];
 bool b_Debug;
 bool b_Enabled = true;
@@ -91,6 +92,8 @@ public void OnPluginStart()
 public void OnMapStart()
 {
 	SteamWorks_SetGameDescription(s_CurrentGamemodeDesc);
+	ServerCommand("hostname %s", s_CurrentServerName);
+	s_CurrentServerName = "";
 }
 
 public void OnConfigsExecuted()
@@ -991,6 +994,8 @@ void LoadGamemodeConfig(const char[] s_Gamemode) {
 						PrintToServer("%s", s_ActionParameter);
 					} else if(StrEqual(s_ActionType, "gamedesc", false)){
 						s_CurrentGamemodeDesc = s_ActionParameter;
+					} else if(StrEqual(s_ActionType, "servername", false)){
+						s_CurrentServerName = s_ActionParameter;
 					}
 				}
 			} while (KvGotoNextKey(h_GMConfig, false));
