@@ -1,3 +1,34 @@
+/**
+ * vim: set ts=4 :
+ * =============================================================================
+ * Manage plugin based gamemodes and map rotations.
+ * Riot Gamemode Manager (C)2021 Riotline.  All rights reserved.
+ * =============================================================================
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License, version 3.0, as published by the
+ * Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * As a special exception, AlliedModders LLC gives you permission to link the
+ * code of this program (as well as its derivative works) to "Half-Life 2," the
+ * "Source Engine," the "SourcePawn JIT," and any Game MODs that run on software
+ * by the Valve Corporation.  You must obey the GNU General Public License in
+ * all respects for all other code used.  Additionally, AlliedModders LLC grants
+ * this exception to all derivative works.  AlliedModders LLC defines further
+ * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
+ * or <http://www.sourcemod.net/license.php>.
+ *
+ * Version: $Id$
+ */
+
 #include <sourcemod>
 #include <morecolors>
 
@@ -32,19 +63,24 @@ ArrayList h_Gamemodes, h_Maps;
 
 public Plugin myinfo =
 {
-	name = "Riot Gamemode Manager",
-	author = "Riotline",
+	name 		= "Riot Gamemode Manager",
+	author 		= "Riotline",
 	description = "Manage plugin gamemodes and map rotations.",
-	version = PLUGIN_VERSION,
-	url = "https://github.com/Riotline/"
+	version 	= PLUGIN_VERSION,
+	url 		= "https://github.com/Riotline/"
 };
 
 //
 // How do I ( ͡° ͜ʖ ͡°)?
 //
 
+//***********************//
+// Fowards/Menu Handling // 
+//***********************//
+
 public void OnPluginStart()
 {
+	//======== ConVars ========//
 	g_Debug = CreateConVar("rgm_debug", "0", "turns on debugging and action logging", FCVAR_DONTRECORD, true, 0.0, true, 1.0);
 	g_Toggle = CreateConVar("rgm_enable", "1", "Enable Riot Gamemode Manager", FCVAR_DONTRECORD, true, 0.0, true, 1.0);
 	g_StartupExec = CreateConVar("rgm_exec", "", "Current Map's Startup Exec.", FCVAR_DONTRECORD);
@@ -63,6 +99,8 @@ public void OnPluginStart()
 
 	g_NextMap = FindConVar("sm_nextmap");
 
+	//======== Commands ========//
+
 	RegConsoleCmd("sm_rtg", RTGCommand);
 
 	RegAdminCmd("sm_forcergm", ForceGamemode, ADMFLAG_CONFIG, "Force Gamemode + Map Change.");
@@ -75,11 +113,14 @@ public void OnPluginStart()
 	//RegAdminCmd("sm_debugconfig", ConfigDebug, ADMFLAG_CONFIG, "Debug Config File");
 	RegAdminCmd("sm_rgmdebug", RGMDebug, ADMFLAG_CONFIG, "Debug");
 
+	//======== Files/Arrays ========//
+
 	h_Gamemodes = CreateArray(32);
 	h_Maps = CreateArray(64);
 
 	LoadRGMConfig();
 	LoadTranslations("rgm.phrases.txt");
+
 	/* See if the menu plugin is already ready */
 	TopMenu topmenu;
 	if (LibraryExists("adminmenu") && ((topmenu = GetAdminTopMenu()) != null))
@@ -88,6 +129,7 @@ public void OnPluginStart()
 		OnAdminMenuReady(topmenu);
 	}
 }
+
 
 public void OnMapStart()
 {
@@ -100,23 +142,29 @@ public void OnConfigsExecuted()
 {
 	char s_CurrentExec[128];
 	GetConVarString(g_StartupExec, s_CurrentExec, sizeof(s_CurrentExec));
-	PrintToServer("%s", s_CurrentExec);
+	if(b_Debug) PrintToServer("%s", s_CurrentExec);
 
+	// When plugin enabled, execute the stored config file if a gamemode calls for it, then clear it.
 	if(b_Enabled) {
+		if(b_Debug) PrintToServer("<<<>>> Attempting to Execute Gamemode Config <<<>>>");
 		ServerCommand("exec \"%s\"", s_CurrentExec);
-		PrintToServer("<<<>>> Attempting to Execute Gamemode Config <<<>>>");
 		SetConVarString(g_StartupExec, NULL_STRING, false, false);
 		s_NextOption = NULL_STRING;
 	}
+	// Rock the Game initial delay before it can be initiated.
 	CreateTimer(g_Cvar_InitialDelay.FloatValue, Timer_DelayRTG, _, TIMER_FLAG_NO_MAPCHANGE);
 
+	// If no gamemode is stored as the currently upcoming loaded game. (Generally if plugin is reloaded or server start)
 	if(StrEqual(s_CurrentGamemode, "")){
 		char s_Arg[256];
 		GetConVarString(g_Cvar_DefaultGame, s_Arg, sizeof(s_Arg));
+		// Ensuring it is currently server startup sequence and there is a default gamemode set. 
+		// If so, grab the default gamemode and quickly set everything up before anyone joins.
 		if(!StrEqual(s_Arg, "") && !b_InitialSetup && GetClientCount(true) <= 0 && GetEngineTime() < 32.0){
 			b_InitialSetup = true;
 			char s_MatchedGamemode[256];
 			int i_MatchCount;
+			// Checking all possible gamemode names to ensure matches even if it isn't completely given. (Versus Saxton -> Versus Saxton Hale)
 			for(int i=0; i < GetArraySize(h_Gamemodes); i++){
 				char s_GamemodeSection[256];
 				GetArrayString(h_Gamemodes, i, s_GamemodeSection, sizeof(s_GamemodeSection))
@@ -125,7 +173,10 @@ public void OnConfigsExecuted()
 					s_MatchedGamemode = s_GamemodeSection;
 				}
 			}
+			// If multiple matches were found, the default gamemode convar was not specific enough.
+			// Catch this and report this. Otherwise, set everyting to the matching gamemode.
 			if(i_MatchCount == 1){
+				// Quickly grab the first map listed under the gamemode.
 				for(int i=0; i<GetArraySize(h_Maps); i++){
 					char s_MapSection[128];
 					GetArrayString(h_Maps, i, s_MapSection, sizeof(s_MapSection));
@@ -143,7 +194,9 @@ public void OnConfigsExecuted()
 						break;
 					}
 				}
-			} else if (i_MatchCount > 1){
+			} 
+			// Multiple Gamemodes matched the ConVar input
+			else if (i_MatchCount > 1){
 				LogError("[RGM] Multiple gamemodes found. Try to be more specific for rgm_defaultgamemode.");
 				char s_CurrentMap[128];
 				Handle h_MapCycleFile = OpenFile("cfg/mapcycle.txt", "w");
@@ -151,7 +204,9 @@ public void OnConfigsExecuted()
 				GetCurrentMap(s_CurrentMap, sizeof(s_CurrentMap));
 				WriteFileLine(h_MapCycleFile, s_CurrentMap); // Prevent any Map Cycle related issues.
 				CloseHandle(h_MapCycleFile);
-			} else {
+			} 
+			// No matches
+			else {
 				LogError("[RGM] Invalid gamemode in rgm_defaultgamemode. Did you spell it correctly?");
 				char s_CurrentMap[128];
 				Handle h_MapCycleFile = OpenFile("cfg/mapcycle.txt", "w");
@@ -161,6 +216,7 @@ public void OnConfigsExecuted()
 				CloseHandle(h_MapCycleFile);
 			}
 		} else {
+			// Ensure mapcycle matches the gamemode or the current map (if something has gone wrong with gamemode selection)
 			char s_CurrentMap[128];
 			Handle h_MapCycleFile = OpenFile("cfg/mapcycle.txt", "w");
 
@@ -170,7 +226,6 @@ public void OnConfigsExecuted()
 		}
 	}
 }
-
 
 public void OnLibraryRemoved(const char[] name)
 {
@@ -184,8 +239,9 @@ public void OnMapEnd()
 {
 	char s_NextMap[128], s_Option[2][128];
 	GetConVarString(g_NextMap, s_NextMap, sizeof(s_NextMap));
-	PrintToServer("MAP END");
+	//PrintToServer("MAP END");
 
+	// Loads the correct information about the next gamemode and map to variables/handles for later use during map startup
 	if(b_Enabled) {
 		ExplodeString(s_NextOption, "|", s_Option, sizeof(s_Option), sizeof(s_Option[]));
 		PrintToServer("[RGM] Loading new gamemode and map. %s:%s", s_Option[0], s_Option[1]);
@@ -201,12 +257,14 @@ public void OnMapEnd()
 	i_VotesNeeded = 0;
 }
 
+// Toggle debugging from ConVar
 public void ToggleDebugging(Handle convar, const char[] oldValue, const char[] newValue) {
 	if (StringToInt(newValue) == 0) {
 		b_Debug = false; 
 	} else b_Debug = true;
 }
 
+// Toggle plugin from ConVar
 public void ToggleRGMCvar(Handle convar, const char[] oldValue, const char[] newValue) {
 	if (StringToInt(newValue) == 0) {
 		b_Enabled = false; 
@@ -215,6 +273,7 @@ public void ToggleRGMCvar(Handle convar, const char[] oldValue, const char[] new
 
 public void OnClientConnected(int client)
 {
+	// Rock the Game checks for voting ratios
 	if (!IsFakeClient(client))
 	{
 		i_Voters++;
@@ -224,6 +283,7 @@ public void OnClientConnected(int client)
 
 public void OnClientDisconnect(int client)
 {	
+	// Adjust rock the game voting ratios to match new player count
 	if (b_Voted[client])
 	{
 		i_Votes--;
@@ -270,6 +330,7 @@ public void OnAdminMenuReady(Handle a_TopMenu)
 	AddToTopMenu(h_AdminMenu, "sm_forcergm", TopMenuObject_Item, AdminMenu_ForceRGM, server_commands, "sm_forcergm", ADMFLAG_CONFIG);
 }
 
+// Force Rock the Game in the Admin Menu under Server Settings
 public void AdminMenu_ForceRTG(TopMenu topmenu, TopMenuAction action, TopMenuObject object_id, int param, char[] buffer, int maxlength)
 {
 	if (action == TopMenuAction_DisplayOption) {
@@ -284,6 +345,7 @@ public void AdminMenu_ForceRTG(TopMenu topmenu, TopMenuAction action, TopMenuObj
 	}
 }
 
+// Force Gamemode Change in the Admin Menu under Server Settings
 public void AdminMenu_ForceRGM(TopMenu topmenu, TopMenuAction action, TopMenuObject object_id, int param, char[] buffer, int maxlength)
 {
 	if (action == TopMenuAction_DisplayOption) {
@@ -316,6 +378,7 @@ public void OnClientSayCommand_Post(int client, const char[] command, const char
 	}
 }
 
+// Rock the Game
 public Action RTGCommand(int client, int args) {
 	if (!client)
 	{
@@ -511,6 +574,8 @@ public int MapVote(Menu menu, MenuAction action, int param1, int param2)
     }
 }
  
+
+// Map part of the voting processes.
 void DoMapVote(const char[] s_MapGamemode)
 {
 	if (IsVoteInProgress())
@@ -585,6 +650,7 @@ public int GamemodeVote(Menu menu, MenuAction action, int param1, int param2)
     }
 }
  
+// Initiate gamemode vote.
 void DoGamemodeVote(bool b_NoChange = false)
 {
 	if (IsVoteInProgress())
@@ -649,12 +715,14 @@ void DoGamemodeVote(bool b_NoChange = false)
 	menu.DisplayVoteToAll(20);
 }
 
+// Show the admin map menu.
 void ShowMapMenu(int client, const char[] s_SelectedGamemode)
 {
 	Handle h_Menu = CreateMenu(MapMenu);
 
 	SetMenuTitle(h_Menu, "[RGM] Select Map (%s)", s_SelectedGamemode);
 
+	// Grab the gamemode maps from the Maps dynamic array.
 	for(int i=0; i<GetArraySize(h_Maps); i++){
 		char s_SelectedMap[128], s_ExplodedSelection[2][128];
 		GetArrayString(h_Maps, i, s_SelectedMap, sizeof(s_SelectedMap));
