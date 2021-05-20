@@ -1,6 +1,6 @@
 # SourceMod | Riot Gamemode Manager
 
-Manage multiple gamemodes along with their respective maps with a _rock the vote_ style plugin. Create a fun mutli-gamemode experience for your server and community.
+Manage multiple gamemodes along with their respective maps with a _rock the vote_ style voting system on top of a plugin manager. Create a fun mutli-gamemode experience for your server and community.
 
 ## Installation
 1. Download latest release or source files
