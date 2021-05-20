@@ -37,7 +37,7 @@
 #undef REQUIRE_EXTENSIONS
 #include <SteamWorks>
 
-#define PLUGIN_VERSION "0.1.2-a.5"
+#define PLUGIN_VERSION "0.1.3-a.1"
 
 #pragma newdecls required
 
@@ -410,9 +410,11 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 		if(i_MatchCount == 1){
 			ShowMapMenu(client, s_MatchedGamemode);
 		} else if (i_MatchCount > 1){
-			CPrintToChat(client, "%t {white}Multiple gamemodes found. Try to be more specific.", "tag");
+			if(client != 0) CPrintToChat(client, "%t {white}Multiple gamemodes found. Try to be more specific.", "tag");
+			else ReplyToCommand(client, "[RGM] Multiple gamemodes found. Try to be more specific.");
 		} else {
-			CPrintToChat(client, "%t {white}Invalid gamemode. Did you spell it correctly?", "tag");
+			if(client !=0) CPrintToChat(client, "%t {white}Invalid gamemode. Did you spell it correctly?", "tag");
+			else ReplyToCommand(client, "[RGM] Invalid gamemode. Did you spell it correctly?");
 		}
 	} else if(GetCmdArgs() == 2){
 		char s_Arg1[256], s_Arg2[256];
@@ -429,10 +431,12 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 			}
 		}
 		if (i_MatchCount > 1){
-			CPrintToChat(client, "%t {white}Multiple gamemodes found. Try to be more specific.", "tag");
+			if(client !=0) CPrintToChat(client, "%t {white}Multiple gamemodes found. Try to be more specific.", "tag");
+			else ReplyToCommand(client, "[RGM] Multiple gamemodes found. Try to be more specific.");
 			return Plugin_Handled;
 		} else if (i_MatchCount < 1){
-			CPrintToChat(client, "%t {white}Invalid gamemode. Did you spell it correctly?", "tag");
+			if(client !=0) CPrintToChat(client, "%t {white}Invalid gamemode. Did you spell it correctly?", "tag");
+			else ReplyToCommand(client, "[RGM] Invalid gamemode. Did you spell it correctly?");
 			return Plugin_Handled;
 		}
 		i_MatchCount = 0;
@@ -446,15 +450,17 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 			}
 		}
 		if (i_MatchCount > 1){
-			CPrintToChat(client, "%t {white}Multiple maps found. Try to be more specific.", "tag");
+			if(client !=0) CPrintToChat(client, "%t {white}Multiple gamemodes found. Try to be more specific.", "tag");
+			else ReplyToCommand(client, "[RGM] Multiple gamemodes found. Try to be more specific.");
 			return Plugin_Handled;
 		} else if (i_MatchCount < 1){
-			CPrintToChat(client, "%t {white}Invalid map. Did you spell it correctly?", "tag");
+			if(client !=0) CPrintToChat(client, "%t {white}Invalid gamemode. Did you spell it correctly?", "tag");
+			else ReplyToCommand(client, "[RGM] Invalid gamemode. Did you spell it correctly?");
 			return Plugin_Handled;
 		} else {
 			char s_ExplodedSelection[2][128];
 			ExplodeString(s_MatchedMap, "|", s_ExplodedSelection, sizeof(s_ExplodedSelection), sizeof(s_ExplodedSelection[]));
-			CPrintToChatAll("%t %t", "tag", "Game Change", s_MatchedGamemode, s_ExplodedSelection[1]);
+			if(client !=0) CPrintToChatAll("%t %t", "tag", "Game Change", s_MatchedGamemode, s_ExplodedSelection[1]);
 			s_NextOption = s_MatchedGamemode;
 			DataPack d_VotedData;
 			CreateDataTimer(3.0, Timer_MapChange, d_VotedData, TIMER_FLAG_NO_MAPCHANGE);
