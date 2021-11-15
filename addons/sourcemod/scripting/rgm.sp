@@ -37,12 +37,14 @@
 #undef REQUIRE_EXTENSIONS
 #include <SteamWorks>
 
-#define PLUGIN_VERSION "0.1.3-a.1"
+#define PLUGIN_VERSION "1.0.0-rc1"
 
 #pragma newdecls required
 
 Handle h_GlobalConfig = INVALID_HANDLE;
-ConVar g_Debug, g_Toggle, g_StartupExec, g_NextMap, g_Cvar_InitialDelay, g_Cvar_Interval, g_Cvar_Needed, g_Cvar_AutoMapCycle, g_Cvar_DefaultGame;
+ConVar g_Debug, g_Toggle, g_StartupExec, g_NextMap, 
+	   g_Cvar_InitialDelay, g_Cvar_Interval, g_Cvar_Needed, 
+	   g_Cvar_AutoMapCycle, g_Cvar_DefaultGame, g_Cvar_HostnameChange;
 TopMenu h_AdminMenu = null;	// Handle for interfacing with the admin menu.
 char s_CurrentGamemode[128] = "";
 char s_CurrentGamemodeDesc[256] = "";
@@ -52,13 +54,17 @@ bool b_Debug;
 bool b_Enabled = true;
 bool b_InitialSetup = false;
 bool b_RTGAllowed = false;
-int i_Voters = 0;				// Total voters connected. Doesn't include fake clients.
-int i_Votes = 0;				// Total number of "say rtg" votes
-int i_VotesNeeded = 0;			// Necessary votes before map vote begins. (voters * percent_needed)
+// Total voters connected. Doesn't include fake clients.
+int i_Voters = 0;				
+// Total number of "say rtg" votes
+int i_Votes = 0;				
+// Necessary votes before map vote begins. (voters * percent_needed)
+int i_VotesNeeded = 0;			
 bool b_Voted[MAXPLAYERS+1] = {false, ...};
 ArrayList h_Gamemodes, h_Maps;
 
-// Thanks to thesupremecommander for some of the original code that was revamped here.
+// Thanks to thesupremecommander for some of the original 
+// code that was revamped here.
 // Thanks to Alliedmodders for the base RTV code.
 
 public Plugin myinfo =
@@ -81,14 +87,59 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
 	//======== ConVars ========//
-	g_Debug = CreateConVar("rgm_debug", "0", "turns on debugging and action logging", FCVAR_DONTRECORD, true, 0.0, true, 1.0);
-	g_Toggle = CreateConVar("rgm_enable", "1", "Enable Riot Gamemode Manager", FCVAR_DONTRECORD, true, 0.0, true, 1.0);
-	g_StartupExec = CreateConVar("rgm_exec", "", "Current Map's Startup Exec.", FCVAR_DONTRECORD);
-	g_Cvar_InitialDelay = CreateConVar("rgm_rtg_initialdelay", "45.0", "Time (in seconds) before first RTG can be held", 0, true, 0.00);
-	g_Cvar_Interval = CreateConVar("rgm_rtg_interval", "240.0", "Time (in seconds) after a failed RTG before another can be held", 0, true, 0.00);
-	g_Cvar_Needed = CreateConVar("rgm_rtg_needed", "0.60", "Percentage of players needed to rock the game (Def 60%)", 0, true, 0.05, true, 1.0);
-	g_Cvar_AutoMapCycle = CreateConVar("rgm_automapcycle", "1", "Automatically Update the MapCycle.txt file to match gamemode.", 0, true, 0.0, true, 1.0);
-	g_Cvar_DefaultGame = CreateConVar("rgm_defaultgamemode", "", "On startup, server will automatically adjust itself for the default gamemode.", 0);
+	g_Debug = CreateConVar(
+		"rgm_debug", 
+		"0", 
+		"turns on debugging and action logging", 
+		FCVAR_DONTRECORD, true, 0.0, true, 1.0
+	);
+	g_Toggle = CreateConVar(
+		"rgm_enable", 
+		"1", 
+		"Enable Riot Gamemode Manager", 
+		FCVAR_DONTRECORD, true, 0.0, true, 1.0
+	);
+	g_StartupExec = CreateConVar(
+		"rgm_exec", 
+		"", 
+		"Current Map's Startup Exec.", 
+		FCVAR_DONTRECORD
+	);
+	g_Cvar_InitialDelay = CreateConVar(
+		"rgm_rtg_initialdelay", 
+		"45.0", 
+		"Time (in seconds) before first RTG can be held", 
+		0, true, 0.00
+	);
+	g_Cvar_Interval = CreateConVar(
+		"rgm_rtg_interval", 
+		"240.0", 
+		"Time (in seconds) after a failed RTG before another can be held", 
+		0, true, 0.00
+	);
+	g_Cvar_Needed = CreateConVar(
+		"rgm_rtg_needed", 
+		"0.60", 
+		"Percentage of players needed to rock the game (Def 60%)", 
+		0, true, 0.05, true, 1.0
+	);
+	g_Cvar_AutoMapCycle = CreateConVar(
+		"rgm_automapcycle", 
+		"1", 
+		"Automatically Update the MapCycle.txt file to match gamemode.", 
+		0, true, 0.0, true, 1.0
+	);
+	g_Cvar_DefaultGame = CreateConVar(
+		"rgm_defaultgamemode", 
+		"", 
+		"On startup, server will automatically adjust itself for the default gamemode.", 
+		0
+	);
+	g_Cvar_HostnameChange = CreateConVar(
+		"rgm_hostnamechange", 
+		"2.0", 
+		"Delay (in seconds) after map change to set server name based on gamemode config. [-1.0 = Disable Name Change]"
+	);
 
 	AutoExecConfig(true, "plugin.rgm");
 	
@@ -103,20 +154,27 @@ public void OnPluginStart()
 
 	RegConsoleCmd("sm_rtg", RTGCommand);
 
-	RegAdminCmd("sm_forcergm", ForceGamemode, ADMFLAG_CONFIG, "Force Gamemode + Map Change.");
-	RegAdminCmd("sm_frgm", ForceGamemode, ADMFLAG_CONFIG, "Force Gamemode + Map Change.");
-	RegAdminCmd("sm_forcertg", InitiateRGMVote, ADMFLAG_VOTE, "Force a Rock The Game Vote");
-	RegAdminCmd("sm_frtg", InitiateRGMVote, ADMFLAG_VOTE, "Force a Rock The Game Vote");
+	RegAdminCmd("sm_forcergm", ForceGamemode, ADMFLAG_CONFIG, 
+							"Force Gamemode + Map Change.");
+	RegAdminCmd("sm_frgm", ForceGamemode, ADMFLAG_CONFIG, 
+							"Force Gamemode + Map Change.");
+	RegAdminCmd("sm_forcertg", InitiateRGMVote, ADMFLAG_VOTE, 
+							"Force a Rock The Game Vote");
+	RegAdminCmd("sm_frtg", InitiateRGMVote, ADMFLAG_VOTE, 
+							"Force a Rock The Game Vote");
 
-	RegAdminCmd("sm_reloadrgm", ReloadRGM, ADMFLAG_CONFIG, "Reload the Riot Gamemode Manager Config.")
-	RegAdminCmd("sm_togglergm", ToggleRGM, ADMFLAG_CONFIG, "Toggle the Gamemode Manager.")
-	//RegAdminCmd("sm_debugconfig", ConfigDebug, ADMFLAG_CONFIG, "Debug Config File");
+	RegAdminCmd("sm_reloadrgm", ReloadRGM, ADMFLAG_CONFIG, 
+							"Reload the Riot Gamemode Manager Config.")
+	RegAdminCmd("sm_togglergm", ToggleRGM, ADMFLAG_CONFIG, 
+							"Toggle the Gamemode Manager.")
+	//RegAdminCmd("sm_debugconfig", ConfigDebug, ADMFLAG_CONFIG, 
+	//						"Debug Config File");
 	RegAdminCmd("sm_rgmdebug", RGMDebug, ADMFLAG_CONFIG, "Debug");
 
 	//======== Files/Arrays ========//
 
 	h_Gamemodes = CreateArray(32);
-	h_Maps = CreateArray(64);
+	h_Maps = CreateArray(128);
 
 	LoadRGMConfig();
 	LoadTranslations("rgm.phrases.txt");
@@ -130,26 +188,30 @@ public void OnPluginStart()
 	}
 }
 
-
-public void OnMapStart()
-{
-	SteamWorks_SetGameDescription(s_CurrentGamemodeDesc);
-	ServerCommand("hostname %s", s_CurrentServerName);
-	s_CurrentServerName = "";
-}
-
 public void OnConfigsExecuted()
 {
 	char s_CurrentExec[128];
 	GetConVarString(g_StartupExec, s_CurrentExec, sizeof(s_CurrentExec));
 	if(b_Debug) PrintToServer("%s", s_CurrentExec);
 
-	// When plugin enabled, execute the stored config file if a gamemode calls for it, then clear it.
+	// When plugin enabled, execute the stored config file 
+	// if a gamemode calls for it, then clear it.
 	if(b_Enabled) {
-		if(b_Debug) PrintToServer("<<<>>> Attempting to Execute Gamemode Config <<<>>>");
+		if (b_Debug) 
+			PrintToServer("<<<>>> Attempting to Execute Gamemode Config <<<>>>");
 		ServerCommand("exec \"%s\"", s_CurrentExec);
 		SetConVarString(g_StartupExec, NULL_STRING, false, false);
-		s_NextOption = NULL_STRING;
+		s_NextOption = NULL_STRING
+	}
+
+	SteamWorks_SetGameDescription(s_CurrentGamemodeDesc);
+	if (g_Cvar_HostnameChange.FloatValue >= 0.0) {
+		CreateTimer(
+			g_Cvar_HostnameChange.FloatValue, 
+			Timer_ServerNameChange, 
+			_, 
+			TIMER_FLAG_NO_MAPCHANGE
+		);
 	}
 	// Rock the Game initial delay before it can be initiated.
 	CreateTimer(g_Cvar_InitialDelay.FloatValue, Timer_DelayRTG, _, TIMER_FLAG_NO_MAPCHANGE);
@@ -410,10 +472,10 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 		if(i_MatchCount == 1){
 			ShowMapMenu(client, s_MatchedGamemode);
 		} else if (i_MatchCount > 1){
-			if(client != 0) CPrintToChat(client, "%t {white}Multiple gamemodes found. Try to be more specific.", "tag");
+			if(client != 0) CPrintToChat(client, "%t %t", "tag", "Multiple Gamemodes");
 			else ReplyToCommand(client, "[RGM] Multiple gamemodes found. Try to be more specific.");
 		} else {
-			if(client !=0) CPrintToChat(client, "%t {white}Invalid gamemode. Did you spell it correctly?", "tag");
+			if(client !=0) CPrintToChat(client, "%t %t", "tag", "Invalid Gamemode");
 			else ReplyToCommand(client, "[RGM] Invalid gamemode. Did you spell it correctly?");
 		}
 	} else if(GetCmdArgs() == 2){
@@ -431,11 +493,11 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 			}
 		}
 		if (i_MatchCount > 1){
-			if(client !=0) CPrintToChat(client, "%t {white}Multiple gamemodes found. Try to be more specific.", "tag");
+			if(client !=0) CPrintToChat(client, "%t %t", "tag", "Multiple Gamemodes");
 			else ReplyToCommand(client, "[RGM] Multiple gamemodes found. Try to be more specific.");
 			return Plugin_Handled;
 		} else if (i_MatchCount < 1){
-			if(client !=0) CPrintToChat(client, "%t {white}Invalid gamemode. Did you spell it correctly?", "tag");
+			if(client !=0) CPrintToChat(client, "%t %t", "tag", "Invalid Gamemode");
 			else ReplyToCommand(client, "[RGM] Invalid gamemode. Did you spell it correctly?");
 			return Plugin_Handled;
 		}
@@ -450,15 +512,16 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 			}
 		}
 		if (i_MatchCount > 1){
-			if(client !=0) CPrintToChat(client, "%t {white}Multiple gamemodes found. Try to be more specific.", "tag");
-			else ReplyToCommand(client, "[RGM] Multiple gamemodes found. Try to be more specific.");
+			if(client !=0) CPrintToChat(client, "%t %t", "tag", "Multiple Maps");
+			else ReplyToCommand(client, "[RGM] Multiple maps found. Try to be more specific.");
 			return Plugin_Handled;
 		} else if (i_MatchCount < 1){
-			if(client !=0) CPrintToChat(client, "%t {white}Invalid gamemode. Did you spell it correctly?", "tag");
-			else ReplyToCommand(client, "[RGM] Invalid gamemode. Did you spell it correctly?");
+			if(client !=0) CPrintToChat(client, "%t %t", "tag", "Invalid Map");
+			else ReplyToCommand(client, "[RGM] Invalid map. Did you spell it correctly?");
 			return Plugin_Handled;
 		} else {
 			char s_ExplodedSelection[2][128];
+			// At the time of writing, didn't think of a good way to implement this. It's stupid.
 			ExplodeString(s_MatchedMap, "|", s_ExplodedSelection, sizeof(s_ExplodedSelection), sizeof(s_ExplodedSelection[]));
 			if(client !=0) CPrintToChatAll("%t %t", "tag", "Game Change", s_MatchedGamemode, s_ExplodedSelection[1]);
 			s_NextOption = s_MatchedGamemode;
@@ -468,7 +531,7 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 			WritePackString(d_VotedData, s_ExplodedSelection[1]);
 		}
 	} else {
-		ReplyToCommand(client, "%t Usage: sm_forcergm [gamemode] [map]", "tag");
+		ReplyToCommand(client, "[RGM] Usage: sm_forcergm [gamemode] [map]");
 	}
 	return Plugin_Handled;
 } // To-do: Create a gamemode finder / validity function rather than repeating code.
@@ -597,16 +660,22 @@ void DoMapVote(const char[] s_MapGamemode)
 	GetCurrentMap(s_CurrentMap, sizeof(s_CurrentMap));
 	for(int i=0; i < GetArraySize(h_Maps); i++){
 		char s_Map[256];
+		char s_SelectedMap[2][256];
+		ExplodeString(s_Map, "|", s_SelectedMap, sizeof(s_SelectedMap), sizeof(s_SelectedMap[]));
 		GetArrayString(h_Maps, i, s_Map, sizeof(s_Map));
-		if(StrContains(s_Map, s_MapGamemode) != -1 && StrContains(s_Map, s_CurrentMap) == -1){
+		if(StrEqual(s_SelectedMap[0], s_MapGamemode, false) && !StrEqual(s_Map, s_CurrentMap)){
 			i_GamemodeMapCount++
 		}
 	}
 
-	if(i_GamemodeMapCount >= 5 && !StrEqual(s_CurrentGamemode, s_MapGamemode)){
-		i_GamemodeMapCount = 5;
-	} else if (i_GamemodeMapCount >= 5 && StrEqual(s_CurrentGamemode, s_MapGamemode)){
-		i_GamemodeMapCount = 4;
+	// if(i_GamemodeMapCount >= 5 && !StrEqual(s_CurrentGamemode, s_MapGamemode)){
+	// 	i_GamemodeMapCount = 5;
+	// } else if (i_GamemodeMapCount >= 5 && StrEqual(s_CurrentGamemode, s_MapGamemode)){
+	// 	i_GamemodeMapCount = 4;
+	// }
+
+	if (i_GamemodeMapCount >= 5) {
+		i_GamemodeMapCount = StrEqual(s_CurrentGamemode, s_MapGamemode) ? 4:5;
 	}
 
 	for(int i=0; i < i_GamemodeMapCount; i++){
@@ -732,8 +801,8 @@ void ShowMapMenu(int client, const char[] s_SelectedGamemode)
 	for(int i=0; i<GetArraySize(h_Maps); i++){
 		char s_SelectedMap[128], s_ExplodedSelection[2][128];
 		GetArrayString(h_Maps, i, s_SelectedMap, sizeof(s_SelectedMap));
-		if(StrContains(s_SelectedMap, s_SelectedGamemode, false) != -1){
-			ExplodeString(s_SelectedMap, "|", s_ExplodedSelection, sizeof(s_ExplodedSelection), sizeof(s_ExplodedSelection[]))
+		ExplodeString(s_SelectedMap, "|", s_ExplodedSelection, sizeof(s_ExplodedSelection), sizeof(s_ExplodedSelection[]));
+		if(StrEqual(s_ExplodedSelection[0], s_SelectedGamemode, false)){
 			AddMenuItem(h_Menu, s_SelectedMap, s_ExplodedSelection[1]);
 		}
 	}
@@ -856,7 +925,7 @@ void LoadRGMConfig() {
 
 	// Load Gamemodes into Global Gamemodes Array
 	ClearArray(h_Gamemodes);
-	ClearArray(h_Maps);
+	ClearMapsList();
 	Handle h_GMConfig = CloneHandle(h_GlobalConfig);
 	KvRewind(h_GMConfig);
 	KvGotoFirstSubKey(h_GMConfig, false);
@@ -885,12 +954,25 @@ void LoadRGMConfig() {
 						ReplaceString(s_MapName, sizeof(s_MapName), "*", "", false);
 						while(ReadDirEntry(h_MapDirectory, s_MapFileName, sizeof(s_MapFileName), h_MapFileType)){
 							if (h_MapFileType != FileType_File || StrContains(s_MapFileName, ".bsp", false) == -1 || StrContains(s_MapFileName, s_MapName, false) == -1) continue;
-							int i_MapFileCharCount = strlen(s_MapFileName)-4;
+							int i_MapFileCharCount = strlen(s_MapFileName) - 4;
 							s_MapFileName[i_MapFileCharCount] = '\0';
 							char s_NewMapName[128];
 							Format(s_NewMapName, sizeof(s_NewMapName), "%s|%s", s_GamemodeSection, s_MapFileName);
 							PushArrayString(h_Maps, s_NewMapName);
 						}
+					}
+				} else if (s_MapName[0] == '!'){
+					char s_MapMatch[256];
+					strcopy(s_MapMatch, sizeof(s_MapMatch), s_MapName);
+					ReplaceString(s_MapMatch, sizeof(s_MapMatch), "!", "", false);
+					Format(s_MapMatch, sizeof(s_MapMatch), "%s|%s", s_GamemodeSection, s_MapMatch);
+
+					int i_StringMatch = FindStringInArray(h_Maps, s_MapMatch);
+					
+					if (i_StringMatch != -1) {
+						RemoveFromArray(h_Maps, i_StringMatch);
+					} else if (b_Debug) {
+						PrintToServer("[RGM D] Could not find and remove %s from map list", s_MapMatch);
 					}
 				} else {
 					Format(s_MapName, sizeof(s_MapName), "%s|%s", s_GamemodeSection, s_MapName);
@@ -1094,6 +1176,19 @@ void LoadGamemodeConfig(const char[] s_Gamemode) {
 	CloseHandle(h_GMConfig);
 }
 
+// what :P
+void ClearMapsList() {
+	int i = 0;
+	while (GetArraySize(h_Maps) > 0) {
+		ClearArray(h_Maps);
+		if (i > 10) {
+			LogError("[RGM] Could not clear maps array.");
+			PrintToServer("[RGM] !! Could not clear maps array. !!");
+			break;
+		}
+	}
+}
+
 //********//
 // Timers //
 //********//
@@ -1101,6 +1196,12 @@ void LoadGamemodeConfig(const char[] s_Gamemode) {
 public Action Timer_DelayRTG(Handle timer)
 {
 	b_RTGAllowed = true;
+}
+
+public Action Timer_ServerNameChange(Handle timer)
+{
+	ServerCommand("hostname %s", s_CurrentServerName);
+	s_CurrentServerName = "";
 }
 
 public Action Timer_MapChange(Handle timer, DataPack pack)

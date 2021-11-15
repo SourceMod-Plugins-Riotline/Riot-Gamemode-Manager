@@ -58,4 +58,24 @@
 		"#format"		"{1:s},{2:d},{3:d}"
 		"en"			"{white}{1} wants to rock the game. ({2} votes, {3} required)"
 	}
+
+	"Multiple Gamemodes"
+	{
+		"en"			"{white}Multiple gamemodes found. Try to be more specific."
+	}
+
+	"Invalid Gamemode"
+	{
+		"en"			"{white}Invalid gamemode. Did you spell it correctly?"
+	}
+
+	"Multiple Maps"
+	{
+		"en"			"{white}Multiple gamemodes found. Try to be more specific."
+	}
+
+	"Invalid Map"
+	{
+		"en"			"{white}Invalid map. Did you spell it correctly?"
+	}
 }
