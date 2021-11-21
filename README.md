@@ -44,7 +44,7 @@ Visit https://wiki.alliedmods.net/Overriding_Command_Access_(Sourcemod) for chan
 > `rgm_hostnamechange <seconds>` - Adjust the delay for when the hostname (from gamemode config) should change after map change. [Default: 2.0]
 
 ## Source File Dependencies and Contributions
-Requires [More Colors](https://forums.alliedmods.net/showthread.php?t=185016) by [Dr.McKay](https://www.doctormckay.com/) to compile.
+Requires [More Colors](https://forums.alliedmods.net/showthread.php?t=185016) by [Dr.McKay](https://www.doctormckay.com/) to compile.  
 Thanks to 'thesupremecommander' for the original gamemode management system [Gamemode Manager](https://forums.alliedmods.net/showthread.php?p=2039152).
 
 ## Suggestions/Feedback/Issues
