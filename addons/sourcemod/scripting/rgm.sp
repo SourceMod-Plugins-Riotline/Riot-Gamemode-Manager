@@ -37,7 +37,7 @@
 #undef REQUIRE_EXTENSIONS
 #include <SteamWorks>
 
-#define PLUGIN_VERSION "1.0.0-rc2"
+#define PLUGIN_VERSION "1.0.0"
 
 #pragma newdecls required
 
