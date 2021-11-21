@@ -1,7 +1,7 @@
 # SourceMod | Riot Gamemode Manager
 Version 1.0.0
 
-(Only supported/tested games: Team Fortress 2)
+(Only supported/tested games: Team Fortress 2)  
 Manage multiple gamemodes along with their respective maps with a _rock the vote_ style voting system on top of a plugin manager. Create a fun mutli-gamemode experience for your server and community.
 
 ## Installation
