@@ -37,7 +37,7 @@
 #undef REQUIRE_EXTENSIONS
 #include <SteamWorks>
 
-#define PLUGIN_VERSION "1.0.0-rc1"
+#define PLUGIN_VERSION "1.0.0-rc2"
 
 #pragma newdecls required
 
@@ -259,7 +259,7 @@ public void OnConfigsExecuted()
 			} 
 			// Multiple Gamemodes matched the ConVar input
 			else if (i_MatchCount > 1){
-				LogError("[RGM] Multiple gamemodes found. Try to be more specific for rgm_defaultgamemode.");
+				LogError("%t Multiple gamemodes found. Try to be more specific for rgm_defaultgamemode.", "tag");
 				char s_CurrentMap[128];
 				Handle h_MapCycleFile = OpenFile("cfg/mapcycle.txt", "w");
 
@@ -269,7 +269,7 @@ public void OnConfigsExecuted()
 			} 
 			// No matches
 			else {
-				LogError("[RGM] Invalid gamemode in rgm_defaultgamemode. Did you spell it correctly?");
+				LogError("%t Invalid gamemode in rgm_defaultgamemode. Did you spell it correctly?", "tag");
 				char s_CurrentMap[128];
 				Handle h_MapCycleFile = OpenFile("cfg/mapcycle.txt", "w");
 
@@ -306,7 +306,7 @@ public void OnMapEnd()
 	// Loads the correct information about the next gamemode and map to variables/handles for later use during map startup
 	if(b_Enabled) {
 		ExplodeString(s_NextOption, "|", s_Option, sizeof(s_Option), sizeof(s_Option[]));
-		PrintToServer("[RGM] Loading new gamemode and map. %s:%s", s_Option[0], s_Option[1]);
+		PrintToServer("%t Loading new gamemode and map. %s:%s", "tag", s_Option[0], s_Option[1]);
 		if(StrEqual(s_NextMap, s_Option[1])){
 			LoadGamemodeConfig(s_Option[0]);
 			s_CurrentGamemode = s_Option[0];
@@ -399,10 +399,10 @@ public void AdminMenu_ForceRTG(TopMenu topmenu, TopMenuAction action, TopMenuObj
 		Format(buffer, maxlength, "Force Rock the Game");
 	} else if (action == TopMenuAction_SelectOption) {
 		if(!IsVoteInProgress()){
-			CPrintToChat(param, "%t %t", "tag", "Gamemode Vote Start");
+			CPrintToChat(param, "%t %t", "ctag", "Gamemode Vote Start");
 			DoGamemodeVote(false);
 		} else {
-			CPrintToChat(param, "%t %t", "tag", "Vote In Progress");
+			CPrintToChat(param, "%t %t", "ctag", "Vote In Progress");
 		}
 	}
 }
@@ -472,11 +472,11 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 		if(i_MatchCount == 1){
 			ShowMapMenu(client, s_MatchedGamemode);
 		} else if (i_MatchCount > 1){
-			if(client != 0) CPrintToChat(client, "%t %t", "tag", "Multiple Gamemodes");
-			else ReplyToCommand(client, "[RGM] Multiple gamemodes found. Try to be more specific.");
+			if(client != 0) CPrintToChat(client, "%t %t", "ctag", "Multiple Gamemodes");
+			else ReplyToCommand(client, "%t Multiple gamemodes found. Try to be more specific.", "tag");
 		} else {
-			if(client !=0) CPrintToChat(client, "%t %t", "tag", "Invalid Gamemode");
-			else ReplyToCommand(client, "[RGM] Invalid gamemode. Did you spell it correctly?");
+			if(client !=0) CPrintToChat(client, "%t %t", "ctag", "Invalid Gamemode");
+			else ReplyToCommand(client, "%t Invalid gamemode. Did you spell it correctly?", "tag");
 		}
 	} else if(GetCmdArgs() == 2){
 		char s_Arg1[256], s_Arg2[256];
@@ -493,12 +493,12 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 			}
 		}
 		if (i_MatchCount > 1){
-			if(client !=0) CPrintToChat(client, "%t %t", "tag", "Multiple Gamemodes");
-			else ReplyToCommand(client, "[RGM] Multiple gamemodes found. Try to be more specific.");
+			if(client !=0) CPrintToChat(client, "%t %t", "ctag", "Multiple Gamemodes");
+			else ReplyToCommand(client, "%t Multiple gamemodes found. Try to be more specific.", "tag");
 			return Plugin_Handled;
 		} else if (i_MatchCount < 1){
-			if(client !=0) CPrintToChat(client, "%t %t", "tag", "Invalid Gamemode");
-			else ReplyToCommand(client, "[RGM] Invalid gamemode. Did you spell it correctly?");
+			if(client !=0) CPrintToChat(client, "%t %t", "ctag", "Invalid Gamemode");
+			else ReplyToCommand(client, "%t Invalid gamemode. Did you spell it correctly?", "tag");
 			return Plugin_Handled;
 		}
 		i_MatchCount = 0;
@@ -512,18 +512,18 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 			}
 		}
 		if (i_MatchCount > 1){
-			if(client !=0) CPrintToChat(client, "%t %t", "tag", "Multiple Maps");
-			else ReplyToCommand(client, "[RGM] Multiple maps found. Try to be more specific.");
+			if(client !=0) CPrintToChat(client, "%t %t", "ctag", "Multiple Maps");
+			else ReplyToCommand(client, "%t Multiple maps found. Try to be more specific.", "tag");
 			return Plugin_Handled;
 		} else if (i_MatchCount < 1){
-			if(client !=0) CPrintToChat(client, "%t %t", "tag", "Invalid Map");
-			else ReplyToCommand(client, "[RGM] Invalid map. Did you spell it correctly?");
+			if(client !=0) CPrintToChat(client, "%t %t", "ctag", "Invalid Map");
+			else ReplyToCommand(client, "%t Invalid map. Did you spell it correctly?", "tag");
 			return Plugin_Handled;
 		} else {
 			char s_ExplodedSelection[2][128];
 			// At the time of writing, didn't think of a good way to implement this. It's stupid.
 			ExplodeString(s_MatchedMap, "|", s_ExplodedSelection, sizeof(s_ExplodedSelection), sizeof(s_ExplodedSelection[]));
-			if(client !=0) CPrintToChatAll("%t %t", "tag", "Game Change", s_MatchedGamemode, s_ExplodedSelection[1]);
+			if(client !=0) CPrintToChatAll("%t %t", "ctag", "Game Change", s_MatchedGamemode, s_ExplodedSelection[1]);
 			s_NextOption = s_MatchedGamemode;
 			DataPack d_VotedData;
 			CreateDataTimer(3.0, Timer_MapChange, d_VotedData, TIMER_FLAG_NO_MAPCHANGE);
@@ -531,7 +531,7 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 			WritePackString(d_VotedData, s_ExplodedSelection[1]);
 		}
 	} else {
-		ReplyToCommand(client, "[RGM] Usage: sm_forcergm [gamemode] [map]");
+		ReplyToCommand(client, "%t Usage: sm_forcergm [gamemode] [map]", "tag");
 	}
 	return Plugin_Handled;
 } // To-do: Create a gamemode finder / validity function rather than repeating code.
@@ -539,7 +539,7 @@ public Action ForceGamemode(int client, int args) { // To-do: rework
 // Admin Gamemode Menu. Force Gamemode/Map Change
 void OpenGamemodeMenu(int client) {
 	Handle h_Menu = CreateMenu(GamemodeMenu);
-	SetMenuTitle(h_Menu, "[RGM] Select Gamemode");
+	SetMenuTitle(h_Menu, "%t Select Gamemode", "tag");
 	
 	for(int i=0; i < GetArraySize(h_Gamemodes); i++)
 	{
@@ -577,7 +577,7 @@ public Action RGMDebug(int client, int args) {
 // Reload Riot Gamemode Manager Configuration File
 public Action ReloadRGM(int client, int args) {
 	LoadRGMConfig();
-	CPrintToChatAll("%t {white}Reloading Configuration File.", "tag");
+	CPrintToChatAll("%t {white}Reloading Configuration File.", "ctag");
 	
 	return Plugin_Handled;
 }
@@ -595,10 +595,10 @@ public Action ToggleRGM(int client, int args) {
 // Force a Gamemode/Map Change Server Vote
 public Action InitiateRGMVote(int client, int args) {
 	if(!IsVoteInProgress()){
-		CPrintToChat(client, "%t %t", "tag", "Gamemode Vote Start");
+		CPrintToChat(client, "%t %t", "ctag", "Gamemode Vote Start");
 		DoGamemodeVote(false);
 	} else {
-		CPrintToChat(client, "%t %t", "tag", "Vote In Progress");
+		CPrintToChat(client, "%t %t", "ctag", "Vote In Progress");
 	}
 
 	return Plugin_Handled;
@@ -626,12 +626,12 @@ public int MapVote(Menu menu, MenuAction action, int param1, int param2)
 			GetMenuItem(menu, param1, s_VotedGame, sizeof(s_VotedGame));
 			ExplodeString(s_VotedGame, "|", s_ExplodedSelection, sizeof(s_ExplodedSelection), sizeof(s_ExplodedSelection[]));
 			if(StrEqual(s_VotedGame, "No Change")){
-				CPrintToChatAll("%t %t", "tag", "RTG No Change");
+				CPrintToChatAll("%t %t", "ctag", "RTG No Change");
 			} else {
 				if(!SetNextMap(s_ExplodedSelection[1])) {
 					LogError("Map %s is an invalid map. Perhaps it was deleted from the maps folder.", s_ExplodedSelection[1]);
 				} else {
-					CPrintToChatAll("%t %t", "tag", "Game Change", s_ExplodedSelection[0], s_ExplodedSelection[1]);
+					CPrintToChatAll("%t %t", "ctag", "Game Change", s_ExplodedSelection[0], s_ExplodedSelection[1]);
 					s_NextOption = s_VotedGame;
 					DataPack d_VotedData;
 					CreateDataTimer(3.0, Timer_MapChange, d_VotedData, TIMER_FLAG_NO_MAPCHANGE);
@@ -715,10 +715,10 @@ public int GamemodeVote(Menu menu, MenuAction action, int param1, int param2)
 			char s_VotedGamemode[128];
 			GetMenuItem(menu, param1, s_VotedGamemode, sizeof(s_VotedGamemode));
 			if(StrEqual(s_VotedGamemode, "No Change")){
-				CPrintToChatAll("%t %t", "tag", "RTG Gamemode No Change");
+				CPrintToChatAll("%t %t", "ctag", "RTG Gamemode No Change");
 				s_VotedGamemode = s_CurrentGamemode;
 			} else {
-				CPrintToChatAll("%t %t", "tag", "RTG Gamemode Change", s_VotedGamemode);
+				CPrintToChatAll("%t %t", "ctag", "RTG Gamemode Change", s_VotedGamemode);
 			}
 			DoMapVote(s_VotedGamemode);
 		}
@@ -746,7 +746,7 @@ void DoGamemodeVote(bool b_NoChange = false)
 
 	for(int j,i=0; i < i_GamemodeCount; i++,j++){
 		if(j >= 100) {
-			LogError("[RGM] Potential Infinite Loop. Breaking");
+			LogError("%t Potential Infinite Loop. Breaking", "tag");
 			break;
 		}
 
@@ -765,7 +765,7 @@ void DoGamemodeVote(bool b_NoChange = false)
 	if(StrEqual(s_CurrentGamemode, "") || !b_NoChange){
 		for(int j,i=0; i < 1; i++,j++){
 			if(j >= 25) {
-				LogError("[RGM] Potential Infinite Loop. Breaking");
+				LogError("%t Potential Infinite Loop. Breaking", "tag");
 				break;
 			}
 
@@ -795,7 +795,7 @@ void ShowMapMenu(int client, const char[] s_SelectedGamemode)
 {
 	Handle h_Menu = CreateMenu(MapMenu);
 
-	SetMenuTitle(h_Menu, "[RGM] Select Map (%s)", s_SelectedGamemode);
+	SetMenuTitle(h_Menu, "%t Select Map (%s)", "tag", s_SelectedGamemode);
 
 	// Grab the gamemode maps from the Maps dynamic array.
 	for(int i=0; i<GetArraySize(h_Maps); i++){
@@ -837,7 +837,7 @@ public int MapMenu(Menu menu, MenuAction action, int param1, int param2) {
 			if(!SetNextMap(s_ExplodedSelection[1])) {
 				LogError("Map %s is an invalid map. Perhaps it was deleted from the maps folder.", s_ExplodedSelection[1]);
 			} else {
-				CPrintToChatAll("%t %t", "tag", "Game Change", s_ExplodedSelection[0], s_ExplodedSelection[1]);
+				CPrintToChatAll("%t %t", "ctag", "Game Change", s_ExplodedSelection[0], s_ExplodedSelection[1]);
 				DataPack d_VotedData;
 				CreateDataTimer(3.0, Timer_MapChange, d_VotedData, TIMER_FLAG_NO_MAPCHANGE);
 				WritePackString(d_VotedData, s_ExplodedSelection[0])
@@ -947,7 +947,7 @@ void LoadRGMConfig() {
 				if(StrContains(s_MapName, "*", false) != -1){
 					Handle h_MapDirectory = OpenDirectory("maps/");
 					if(h_MapDirectory == INVALID_HANDLE){
-						LogError("[RGM] Invalid Maps Folder or Handle");
+						LogError("%t Invalid Maps Folder or Handle", "tag");
 					} else {
 						char s_MapFileName[256];
 						FileType h_MapFileType;
@@ -972,7 +972,7 @@ void LoadRGMConfig() {
 					if (i_StringMatch != -1) {
 						RemoveFromArray(h_Maps, i_StringMatch);
 					} else if (b_Debug) {
-						PrintToServer("[RGM D] Could not find and remove %s from map list", s_MapMatch);
+						PrintToServer("%t Debug: Could not find and remove %s from map list", "tag", s_MapMatch);
 					}
 				} else {
 					Format(s_MapName, sizeof(s_MapName), "%s|%s", s_GamemodeSection, s_MapName);
@@ -1143,7 +1143,7 @@ void LoadGamemodeConfig(const char[] s_Gamemode) {
 						char s_Path[64] = "cfg/";
 						StrCat(s_Path, sizeof(s_Path), s_ActionParameter);
 						if (!FileExists(s_Path)) {
-							PrintToServer("[RGM] Could not find config: %s", s_ActionParameter);
+							PrintToServer("%t Could not find config: %s", "tag", s_ActionParameter);
 						} else {
 							SetConVarString(g_StartupExec, s_ActionParameter, false, false);
 						}
@@ -1182,8 +1182,8 @@ void ClearMapsList() {
 	while (GetArraySize(h_Maps) > 0) {
 		ClearArray(h_Maps);
 		if (i > 10) {
-			LogError("[RGM] Could not clear maps array.");
-			PrintToServer("[RGM] !! Could not clear maps array. !!");
+			LogError("%t Could not clear maps array.", "tag");
+			PrintToServer("%t !! Could not clear maps array. !!", "tag");
 			break;
 		}
 	}

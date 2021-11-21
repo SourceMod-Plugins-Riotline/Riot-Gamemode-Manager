@@ -2,8 +2,13 @@
 {
 	"tag"
 	{
+		"en"	"[RGM]"
+    }
+
+	"ctag"
+	{
 		"en"	"{slateblue}[RGM]"
-        }
+    }
 
 	"Gamemode Vote Start"
 	{
