@@ -5,7 +5,7 @@ Version 1.0.0
 Manage multiple gamemodes along with their respective maps with a _rock the vote_ style voting system on top of a plugin manager. Create a fun mutli-gamemode experience for your server and community.
 
 ## Installation
-1. Download latest release or source files
+1. Download latest release or source files (Optional: [SteamWorks](https://forums.alliedmods.net/showthread.php?t=229556))
 2. Extract all files into the 'sourcemod/' folder
 3. Change the rgm.gamemodes.cfg file to include all your gamemodes and maps.
 4. Restart your server or execute command `sm plugins load rgm`
