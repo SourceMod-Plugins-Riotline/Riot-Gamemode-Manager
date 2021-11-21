@@ -1,4 +1,5 @@
 # SourceMod | Riot Gamemode Manager
+Version 1.0.0
 
 Manage multiple gamemodes along with their respective maps with a _rock the vote_ style voting system on top of a plugin manager. Create a fun mutli-gamemode experience for your server and community.
 
@@ -8,8 +9,10 @@ Manage multiple gamemodes along with their respective maps with a _rock the vote
 3. Change the rgm.gamemodes.cfg file to include all your gamemodes and maps.
 4. Restart your server or execute command `sm plugins load rgm`
 5. Change the ConVars in the automatically generated config file in `/cfg/sourcemod`
-4. ??
-5. Profit!?!
+6. ??
+7. Profit!?!
+
+!! NOTE !! mapcycle will be utilised by the plugin. This plugin will automatically change/edit the mapcycle file in order to ensure correct maps are loaded/listed when doing any map-related changes like a normal RTV vote. Altering the file without disabling this plugin will not work properly.
 
 ## Commands
 #### Admin Commands
@@ -20,7 +23,7 @@ Visit https://wiki.alliedmods.net/Overriding_Command_Access_(Sourcemod) for chan
 
 > `sm_reloadrgm` - Reload the Riot Gamemode Manager Config. [Default Perm: CONFIG]
 
-> `sm_togglergm` - Toggle the Gamemode Manager status. [Default Perm: CONFIG] _\*Untested\*_
+> `sm_togglergm` - Toggle whether the Gamemode Manager is enabled or not. [Default Perm: CONFIG] _\*Untested\*_
 
 > `sm_rgmdebug` - Shows current status of the plugin [Default Perm: CONFIG] _\*Debugging Command\*_
 
@@ -36,7 +39,9 @@ Visit https://wiki.alliedmods.net/Overriding_Command_Access_(Sourcemod) for chan
 
 > `rgm_automapcycle <1/0>` - Automatically change the mapcycle.txt file to match the current gamemodes' maps. [Default: '1']
 
-> `rgm_defaultgamemode <gamemode>` - On server startup, automatically adjust the server to the specified gamemode. (Disabled when '') [Default: '']
+> `rgm_defaultgamemode <gamemode>` - On server startup, automatically adjust the server to the specified gamemode. (Disabled: '') [Default: '']
+
+> `rgm_hostnamechange <seconds>` - Adjust the delay for when the hostname (from gamemode config) should change after map change. [Default: 2.0]
 
 ## Source File Dependencies
 Requires [More Colors](https://forums.alliedmods.net/showthread.php?t=185016) by [Dr.McKay](https://www.doctormckay.com/) to compile.
