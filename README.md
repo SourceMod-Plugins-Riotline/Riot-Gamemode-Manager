@@ -48,6 +48,10 @@ Visit https://wiki.alliedmods.net/Overriding_Command_Access_(Sourcemod) for chan
 Requires [More Colors](https://forums.alliedmods.net/showthread.php?t=185016) by [Dr.McKay](https://www.doctormckay.com/) to compile.  
 Thanks to 'thesupremecommander' for the original gamemode management system [Gamemode Manager](https://forums.alliedmods.net/showthread.php?p=2039152).
 
+## Known Issues
+
+Gamemodes with indistinguishable names or similar names may cause issues with the (un)loader.
+
 ## Suggestions/Feedback/Issues
 
 Don't hesistate to contact myself or submit an issue report for any concerns, queries or suggestions for this plugin!
