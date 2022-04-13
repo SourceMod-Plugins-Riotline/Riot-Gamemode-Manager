@@ -50,7 +50,8 @@ Thanks to 'thesupremecommander' for the original gamemode management system [Gam
 
 ## Known Issues
 
-Gamemodes with indistinguishable names or similar names may cause issues with the (un)loader.
+- Gamemodes with indistinguishable names or similar names may cause issues with the (un)loader.
+- Rock the Game Map selection is not being shown after a successful game selection.
 
 ## Suggestions/Feedback/Issues
 
